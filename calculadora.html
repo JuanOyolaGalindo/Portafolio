@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Calculadora de Redes IPv4 Juan Oyola</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    .binario {
+      display: flex;
+      font-family: monospace;
+      font-size: 1.2em;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      padding: 5px;
+    }
+    .binario .red {
+      background-color: #ff7070;
+      padding: 2px 4px;
+      border-radius: 4px 0 0 4px;
+      color: white;
+    }
+    .binario .subred {
+      background-color: #70a1ff;
+      padding: 2px 4px;
+      color: white;
+    }
+    .binario .host {
+      background-color: #7bed9f;
+      padding: 2px 4px;
+      border-radius: 0 4px 4px 0;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+<div class="container mt-5">
+  <h1 class="text-center">Calculadora de Redes - Juan Oyola</h1>
+  <div class="row justify-content-center">
+    <div class="col-md-6">
+      <form id="formularioRed">
+        <div class="mb-3">
+          <label for="direccionIp" class="form-label">Dirección IP</label>
+          <input type="text" class="form-control" id="direccionIp" placeholder="Ejemplo: 192.168.0.1">
+          <div class="text-danger" id="errorIp"></div>
+        </div>
+        <div class="mb-3">
+          <label for="mascaraRed" class="form-label">Máscara de Red</label>
+          <input type="text" class="form-control" id="mascaraRed" placeholder="Ejemplo: 255.255.255.0">
+          <div class="text-danger" id="errorMascara"></div>
+        </div>
+        <div class="d-flex gap-2">
+          <a href="index.html" class="btn btn-secondary w-50">Volver al portafolio</a>
+          <button type="submit" class="btn btn-primary w-50">Calcular</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="mt-5" id="resultados" style="display: none;">
+    <h3>Resultados</h3>
+    <p><strong>IP de Red:</strong> <span id="ipRed"></span></p>
+    <p><strong>IP de Broadcast:</strong> <span id="ipBroadcast"></span></p>
+    <p><strong>Cantidad de IPs útiles:</strong> <span id="cantidadHosts"></span></p>
+    <p><strong>Rango de IPs útiles:</strong> <span id="rangoIps"></span></p>
+    <p><strong>Clase de IP:</strong> <span id="claseIp"></span></p>
+    <p><strong>IP Pública o Privada:</strong> <span id="publicaPrivada"></span></p>
+
+
+    <h4>BINARIO</h4>
+    <div class="binario">
+      <span class="red" id="porcionRedBinaria"></span>
+      <span class="subred" id="porcionSubredBinaria"></span>
+      <span class="host" id="porcionHostBinaria"></span>
+    </div>
+  </div>
+</div>
+
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+
+
+<script>
+  document.getElementById('formularioRed').addEventListener('submit', function(evento) {
+    evento.preventDefault();
+
+    const direccionIp = document.getElementById('direccionIp').value;
+    const mascaraRed = document.getElementById('mascaraRed').value;
+
+
+    document.getElementById('errorIp').textContent = '';
+    document.getElementById('errorMascara').textContent = '';
+
+
+    if (!esIpValida(direccionIp)) {
+      document.getElementById('errorIp').textContent = 'IP no válida. Debe estar en formato X.X.X.X y tener valores entre 0 y 255.';
+      return;
+    }
+    if (!esMascaraValida(mascaraRed)) {
+      document.getElementById('errorMascara').textContent = 'Máscara no válida. Debe ser una máscara de red válida (255.255.255.0 por ejemplo).';
+      return;
+    }
+
+
+    const resultado = calcularRed(direccionIp, mascaraRed);
+
+
+    document.getElementById('ipRed').textContent = resultado.ipRed;
+    document.getElementById('ipBroadcast').textContent = resultado.ipBroadcast;
+    document.getElementById('cantidadHosts').textContent = resultado.cantidadHosts;
+    document.getElementById('rangoIps').textContent = resultado.rangoIps;
+    document.getElementById('claseIp').textContent = resultado.claseIp;
+    document.getElementById('publicaPrivada').textContent = resultado.publicaPrivada;
+
+    // Mostrar la representación binaria coloreada
+    document.getElementById('porcionRedBinaria').textContent = resultado.porcionRedBinaria;
+    document.getElementById('porcionSubredBinaria').textContent = resultado.porcionSubredBinaria;
+    document.getElementById('porcionHostBinaria').textContent = resultado.porcionHostBinaria;
+
+    document.getElementById('resultados').style.display = 'block';
+  });
+
+
+  function esIpValida(ip) {
+    const partesIp = ip.split('.');
+    if (partesIp.length !== 4) return false;
+    return partesIp.every(parte => esByte(parte));
+  }
+
+
+  function esByte(valor) {
+    const num = Number(valor);
+    return num >= 0 && num <= 255 && !isNaN(num);
+  }
+
+
+  function esMascaraValida(mascara) {
+    const mascarasValidas = [
+      '128.0.0.0', '192.0.0.0', '224.0.0.0', '240.0.0.0', '248.0.0.0', '252.0.0.0', '254.0.0.0', '255.0.0.0',
+      '255.128.0.0', '255.192.0.0', '255.224.0.0', '255.240.0.0', '255.248.0.0', '255.252.0.0', '255.254.0.0',
+      '255.255.0.0', '255.255.128.0', '255.255.192.0', '255.255.224.0', '255.255.240.0', '255.255.248.0',
+      '255.255.252.0', '255.255.254.0', '255.255.255.0', '255.255.255.128', '255.255.255.192', '255.255.255.224',
+      '255.255.255.240', '255.255.255.248', '255.255.255.252', '255.255.255.254'
+    ];
+    return mascarasValidas.includes(mascara);
+  }
+
+
+  function calcularRed(direccionIp, mascaraRed) {
+    const ipBinaria = ipABinario(direccionIp);
+    const mascaraBinaria = ipABinario(mascaraRed);
+
+    const redBinaria = obtenerDireccionRed(ipBinaria, mascaraBinaria);
+    const broadcastBinaria = obtenerDireccionBroadcast(redBinaria, mascaraBinaria);
+
+    const ipRed = binarioAip(redBinaria);
+    const ipBroadcast = binarioAip(broadcastBinaria);
+    const cantidadHosts = obtenerCantidadHosts(mascaraBinaria);
+    const rangoIps = obtenerRangoIps(ipRed, ipBroadcast);
+    const claseIp = obtenerClaseIp(direccionIp);
+    const publicaPrivada = esIpPrivada(direccionIp) ? "Privada" : "Pública";
+
+    const porcionRedBinaria = obtenerPorcionRed(ipBinaria, mascaraBinaria);
+    const porcionHostBinaria = obtenerPorcionHost(ipBinaria, mascaraBinaria);
+    const porcionSubredBinaria = obtenerPorcionSubred(mascaraBinaria);
+
+    return {
+      ipRed,
+      ipBroadcast,
+      cantidadHosts,
+      rangoIps,
+      claseIp,
+      publicaPrivada,
+      porcionRedBinaria,
+      porcionSubredBinaria,
+      porcionHostBinaria
+    };
+  }
+
+
+  function ipABinario(ip) {
+    return ip.split('.').map(octeto => parseInt(octeto, 10).toString(2).padStart(8, '0')).join('.');
+  }
+
+
+  function binarioAip(binario) {
+    return binario.split('.').map(octeto => parseInt(octeto, 2)).join('.');
+  }
+
+
+  function obtenerDireccionRed(ipBinaria, mascaraBinaria) {
+    return ipBinaria.split('.').map((octeto, indice) => {
+      return (parseInt(octeto, 2) & parseInt(mascaraBinaria.split('.')[indice], 2)).toString(2).padStart(8, '0');
+    }).join('.');
+  }
+
+  function obtenerDireccionBroadcast(redBinaria, mascaraBinaria) {
+    return redBinaria.split('.').map((octeto, indice) => {
+      return (parseInt(octeto, 2) | (~parseInt(mascaraBinaria.split('.')[indice], 2) & 255)).toString(2).padStart(8, '0');
+    }).join('.');
+  }
+
+
+  function obtenerCantidadHosts(mascaraBinaria) {
+    const bitsHost = mascaraBinaria.split('.').reduce((acc, octeto) => acc + (8 - octeto.replace(/0/g, '').length), 0);
+    return Math.pow(2, bitsHost) - 2; // Hosts utilizables
+  }
+
+
+  function obtenerRangoIps(ipRed, ipBroadcast) {
+    const inicio = ipRed.split('.');
+    inicio[3] = (parseInt(inicio[3]) + 1).toString();
+
+    const fin = ipBroadcast.split('.');
+    fin[3] = (parseInt(fin[3]) - 1).toString();
+
+    return `${inicio.join('.')} - ${fin.join('.')}`;
+  }
+
+  function obtenerClaseIp(direccionIp) {
+    const primerOcteto = parseInt(direccionIp.split('.')[0], 10);
+    if (primerOcteto <= 126) return 'Clase A';
+    if (primerOcteto <= 191) return 'Clase B';
+    if (primerOcteto <= 223) return 'Clase C';
+    if (primerOcteto <= 239) return 'Clase D (Multicast)';
+    return 'Clase E (Reservada)';
+  }
+
+
+  function esIpPrivada(direccionIp) {
+    const [primerOcteto, segundoOcteto] = direccionIp.split('.').map(Number);
+    if (primerOcteto === 10) return true;
+    if (primerOcteto === 172 && segundoOcteto >= 16 && segundoOcteto <= 31) return true;
+    if (primerOcteto === 192 && segundoOcteto === 168) return true;
+    return false;
+  }
+
+
+  function obtenerPorcionRed(ipBinaria, mascaraBinaria) {
+    return ipBinaria.split('.').map((octeto, indice) => {
+      return (parseInt(octeto, 2) & parseInt(mascaraBinaria.split('.')[indice], 2)).toString(2).padStart(8, '0');
+    }).join('.');
+  }
+
+
+  function obtenerPorcionSubred(mascaraBinaria) {
+    return mascaraBinaria.split('.').map(octeto => octeto).join('.');
+  }
+
+  function obtenerPorcionHost(ipBinaria, mascaraBinaria) {
+    return ipBinaria.split('.').map((octeto, indice) => {
+      return (parseInt(octeto, 2) & (~parseInt(mascaraBinaria.split('.')[indice], 2) & 255)).toString(2).padStart(8, '0');
+    }).join('.');
+  }
+</script>
+</body>
+</html>
